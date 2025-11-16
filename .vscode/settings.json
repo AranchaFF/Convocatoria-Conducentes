@@ -1,0 +1,24 @@
+{
+    "python.analysis.typeCheckingMode": "off",
+    "python.languageServer": "Pylance",
+    "python.linting.enabled": false,
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportGeneralTypeIssues": "none",
+        "reportOptionalMemberAccess": "none",
+        "reportOptionalSubscript": "none",
+        "reportOptionalIterable": "none",
+        "reportOptionalContextManager": "none",
+        "reportOptionalOperand": "none",
+        "reportUntypedFunctionDecorator": "none",
+        "reportUntypedClassDecorator": "none",
+        "reportUntypedBaseClass": "none",
+        "reportUnusedImport": "none",
+        "reportUnusedClass": "none",
+        "reportUnusedFunction": "none",
+        "reportUnusedVariable": "none",
+        "reportDuplicateImport": "none",
+        "reportMissingImports": "none",
+        "reportMissingTypeStubs": "none"
+    }
+}

@@ -1,3 +1,4 @@
+# pyright: reportMissingModuleSource=false, reportUndefinedVariable=false
 import streamlit as st
 import pandas as pd
 import io
@@ -6,11 +7,16 @@ from datetime import datetime, date
 import openpyxl
 from PIL import Image
 import pytesseract
-import PyPDF2
 import re
 import platform
 import os
 import docx
+
+# Importar PyPDF2 correctamente
+try:
+    import PyPDF2
+except ImportError:
+    PyPDF2 = None
 
 # Configuración de Tesseract OCR
 if platform.system() == 'Windows':
@@ -24,73 +30,653 @@ if platform.system() == 'Windows':
             pytesseract.pytesseract.tesseract_cmd = ruta
             break
 
+@st.cache_data
+def create_circular_favicon_premium(logo_path="assets/logo.png", size=256):
+    """Crea un favicon circular premium con fondo blanco y efectos"""
+    try:
+        from PIL import ImageFilter
+        
+        # Cargar imagen
+        img = Image.open(logo_path).convert("RGBA")
+        
+        # Crear base con padding para la sombra
+        padding = 20
+        total_size = size + padding * 2
+        
+        # Fondo blanco circular
+        bg = Image.new('RGBA', (total_size, total_size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(bg)
+        
+        # Dibujar círculo con sombra
+        shadow_offset = 4
+        draw.ellipse(
+            (padding + shadow_offset, padding + shadow_offset, 
+             total_size - padding + shadow_offset, total_size - padding + shadow_offset),
+            fill=(0, 0, 0, 50)  # Sombra suave
+        )
+        
+        # Círculo blanco principal
+        draw.ellipse(
+            (padding, padding, total_size - padding, total_size - padding),
+            fill=(255, 255, 255, 255)
+        )
+        
+        # Redimensionar y centrar logo
+        logo_size = int(size * 0.6)
+        img.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
+        
+        x = (total_size - img.width) // 2
+        y = (total_size - img.height) // 2
+        bg.paste(img, (x, y), img)
+        
+        # Borde sutil
+        draw.ellipse(
+            (padding, padding, total_size - padding, total_size - padding),
+            outline=(74, 144, 226, 100),
+            width=3
+        )
+        
+        # Recortar al tamaño final
+        final = bg.crop((padding, padding, total_size - padding, total_size - padding))
+        
+        # Guardar
+        favicon_path = "assets/favicon.png"
+        Path("assets").mkdir(exist_ok=True)
+        final.save(favicon_path, "PNG")
+        
+        return favicon_path
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
 st.set_page_config(
-    page_title="Smartmind - Documentación Convocatoria",
-    page_icon="",
+    page_title="Interpros SmartMind",
+    page_icon="logo.png",  
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# CSS Elegante Profesional - Paleta Beige/Tierra
+# Diseño Innovador Mejorado
 st.markdown("""
 <style>
-    :root {
-        --primary: #8B7355;
-        --primary-dark: #6B5644;
-        --accent: #C9A882;
-        --accent-dark: #B8956F;
-        --background: #FAF8F5;
-        --background-secondary: #F5F1EB;
-        --card-bg: #FFFFFF;
-        --border: #E8DFD4;
-        --text-primary: #3E3832;
-        --text-secondary: #6B625A;
-        --text-muted: #9B8F85;
-        --success: #7A9B76;
-        --warning: #C9A45E;
-        --danger: #B85C5C;
-        --shadow: rgba(139, 115, 85, 0.08);
-        --shadow-hover: rgba(139, 115, 85, 0.15);
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+    
+   :root {
+    --primary-color: #2c3e50;      /* azul oscuro profesional */
+    --secondary-color: #34495e;    /* azul grisáceo */
+    --accent-color: #1abc9c;       /* verde-agua para detalles */
+    --accent-alt-color: #e67e22;   /* naranja suave para contrastes */
+    --bg-primary: #f5f7fa;         /* fondo claro y neutro */
+    --bg-secondary: #ffffff;       /* blanco para secciones y tarjetas */
+    --text-primary: #2c3e50;       /* texto principal oscuro */
+    --text-secondary: #7f8c8d;     /* texto secundario gris suave */
+    --glass-bg: rgba(255, 255, 255, 0.15);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+    
+    @keyframes glow {
+        0%, 100% { box-shadow: 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan); }
+        50% { box-shadow: 0 0 30px var(--neon-purple), 0 0 60px var(--neon-purple); }
     }
-    * { font-family: 'Inter', sans-serif; }
+    
+    @keyframes slideInRight {
+        from { transform: translateX(100px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    * {
+        font-family: 'Poppins', sans-serif;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
     #MainMenu, footer, header {visibility: hidden;}
-    .stApp { background: linear-gradient(135deg, var(--background) 0%, var(--background-secondary) 100%); }
-    .main .block-container { padding: 2.5rem 4rem; max-width: 1400px; margin: 0 auto; }
-    h1 { font-size: 2.25rem !important; font-weight: 600 !important; color: var(--text-primary) !important; margin-bottom: 0.75rem !important; letter-spacing: -0.03em !important; }
-    h2 { font-size: 1.75rem !important; font-weight: 600 !important; color: var(--primary-dark) !important; margin-top: 2.5rem !important; margin-bottom: 1.25rem !important; }
-    h3 { font-size: 1.25rem !important; font-weight: 500 !important; color: var(--text-secondary) !important; margin-bottom: 1rem !important; }
-    .header-container { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); padding: 3rem 3.5rem; border-radius: 20px; margin-bottom: 3rem; box-shadow: 0 12px 40px var(--shadow-hover); position: relative; overflow: hidden; }
-    .header-title { color: white; font-size: 2.25rem; font-weight: 600; margin: 0; }
-    .header-subtitle { color: rgba(255,255,255,0.92); font-size: 1.05rem; margin-top: 0.75rem; }
-    .custom-card { background: var(--card-bg); border-radius: 16px; padding: 2rem; border: 1px solid var(--border); box-shadow: 0 4px 20px var(--shadow); margin-bottom: 1.5rem; transition: all 0.3s; }
-    .custom-card:hover { box-shadow: 0 8px 30px var(--shadow-hover); transform: translateY(-2px); }
-    .custom-card h3 { color: var(--primary-dark); font-size: 1.15rem; font-weight: 600; }
-    .stFileUploader { background: var(--card-bg); border: 2px dashed var(--border); border-radius: 16px; padding: 2rem; transition: all 0.3s; }
-    .stFileUploader:hover { border-color: var(--accent); box-shadow: 0 6px 25px var(--shadow); }
-    .stButton button { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; font-weight: 600; border: none; border-radius: 12px; padding: 0.875rem 2.5rem; transition: all 0.3s; box-shadow: 0 6px 20px var(--shadow-hover); }
-    .stButton button:hover { transform: translateY(-3px); box-shadow: 0 10px 30px var(--shadow-hover); }
-    .stDownloadButton button { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%); color: white; font-weight: 600; border-radius: 12px; padding: 0.875rem 2.5rem; box-shadow: 0 6px 20px rgba(201, 164, 130, 0.25); }
-    .stDownloadButton button:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(201, 164, 130, 0.35); }
-    [data-testid="stMetricValue"] { font-size: 2.5rem !important; font-weight: 700 !important; color: var(--primary-dark) !important; }
-    [data-testid="stMetricLabel"] { font-size: 0.8rem !important; font-weight: 600 !important; color: var(--text-muted) !important; text-transform: uppercase; }
-    [data-testid="stMetric"] { background: var(--card-bg); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 15px var(--shadow); }
-    .stProgress > div > div > div { background: linear-gradient(90deg, var(--accent) 0%, var(--primary) 100%); border-radius: 10px; height: 10px; }
-    .stTabs [data-baseweb="tab"] { color: var(--text-muted); font-weight: 500; padding: 1rem 2rem; border-radius: 12px 12px 0 0; }
-    .stTabs [aria-selected="true"] { color: var(--primary-dark); border-bottom: 3px solid var(--primary); font-weight: 600; }
-    .stTabs [data-baseweb="tab-panel"] { background-color: var(--card-bg); border-radius: 16px; padding: 2.5rem; box-shadow: 0 4px 20px var(--shadow); }
-    .result-container { background: linear-gradient(135deg, #F0F7F0 0%, #E8F5E8 100%); border: 2px solid var(--success); border-radius: 20px; padding: 2.5rem; margin: 2.5rem 0; box-shadow: 0 12px 40px rgba(122, 155, 118, 0.15); }
-    .result-title { color: var(--success); font-size: 1.75rem; font-weight: 700; }
-    .stAlert { border-radius: 16px; padding: 1.25rem 1.5rem; box-shadow: 0 4px 15px var(--shadow); border-left: 4px solid; }
-    .stSuccess { background: linear-gradient(135deg, #F0F7F0 0%, #E8F5E8 100%); color: var(--success); border-left-color: var(--success); }
-    .stWarning { background: linear-gradient(135deg, #FFF9EB 0%, #FFF4E0 100%); color: var(--warning); border-left-color: var(--warning); }
-    .stError { background: linear-gradient(135deg, #FFF0F0 0%, #FFE8E8 100%); color: var(--danger); border-left-color: var(--danger); }
+    
+    .stApp {
+        background: linear-gradient(135deg, #0a0e27 0%, #1a1f4d 50%, #0a0e27 100%);
+        background-size: 200% 200%;
+        animation: gradientShift 15s ease infinite;
+    }
+    
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    .stApp::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            radial-gradient(circle at 20% 30%, rgba(0, 245, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(217, 70, 239, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    .main .block-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* TIPOGRAFÍA MEJORADA - MÁS LEGIBLE */
+    h1 {
+        font-size: 2.5rem !important;
+        font-weight: 800 !important;
+        color: #ffffff !important;
+        margin-bottom: 0.5rem !important;
+        letter-spacing: -0.02em !important;
+        text-shadow: 0 2px 10px rgba(0, 245, 255, 0.3);
+        animation: slideInRight 0.8s ease-out;
+    }
+    
+    h2 {
+        font-size: 1.75rem !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
+        margin: 2.5rem 0 1rem 0 !important;
+        position: relative;
+        display: inline-block;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 60%;
+        height: 3px;
+        background: linear-gradient(90deg, var(--neon-cyan), transparent);
+        border-radius: 2px;
+    }
+    
+    h3 {
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+        color: #ffffff !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    /* TEXTO MÁS LEGIBLE */
+    p {
+        color: #e2e8f0 !important;
+        line-height: 1.7;
+        font-size: 0.95rem;
+        font-weight: 400;
+    }
+    
+    label, span, div {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Header SIN franja separadora */
+    .header-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        padding: 3rem;
+        border-radius: 24px;
+        margin-bottom: 2.5rem;
+        height: 20px;
+        box-shadow: var(--glass-shadow), 
+                    0 0 40px rgba(0, 245, 255, 0.2),
+                    inset 0 0 20px rgba(255, 255, 255, 0.05);
+        position: relative;
+        overflow: hidden;
+        animation: slideInRight 0.6s ease-out;
+    }
+    
+    .header-container::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, var(--neon-cyan) 0%, transparent 70%);
+        opacity: 0.05;
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    .header-title {
+        color: #ffffff !important;
+        font-size: 2.25rem;
+        font-weight: 800;
+        margin: 0;
+        position: relative;
+        z-index: 1;
+        text-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+    }
+    
+    .header-subtitle {
+        color: #e2e8f0 !important;
+        font-size: 1rem;
+        margin-top: 0.75rem;
+        font-weight: 400;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Cards con mejor contraste */
+    .custom-card {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 1.75rem;
+        margin-bottom: 1.25rem;
+        box-shadow: var(--glass-shadow);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .custom-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.15), transparent);
+        transition: left 0.6s;
+    }
+    
+    .custom-card:hover::before {
+        left: 100%;
+    }
+    
+    .custom-card:hover {
+        transform: translateY(-5px) scale(1.02);
+        border-color: var(--neon-cyan);
+        box-shadow: 0 12px 40px rgba(0, 245, 255, 0.3);
+        background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .custom-card h3 {
+        color: #ffffff !important;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .custom-card p {
+        color: #e2e8f0 !important;
+    }
+    
+    .stFileUploader {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(16px);
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 2rem;
+        transition: all 0.4s;
+    }
+    
+    .stFileUploader:hover {
+        border-color: var(--neon-purple);
+        background: rgba(217, 70, 239, 0.1);
+        box-shadow: 0 0 30px rgba(217, 70, 239, 0.2);
+    }
+    
+    .stFileUploader label {
+        color: #ffffff !important;
+        font-weight: 500 !important;
+    }
+    
+    .stButton button {
+        background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+        color: #0a0e27;
+        font-weight: 700;
+        border: none;
+        border-radius: 16px;
+        padding: 0.875rem 2rem;
+        font-size: 0.95rem;
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stButton button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .stButton button:hover::before {
+        left: 100%;
+    }
+    
+    .stButton button:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 0 40px rgba(0, 245, 255, 0.6);
+    }
+    
+    .stDownloadButton button {
+        background: linear-gradient(135deg, var(--neon-green), #00cc6a);
+        color: #0a0e27;
+        font-weight: 700;
+        border-radius: 16px;
+        padding: 0.875rem 2rem;
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+    }
+    
+    .stDownloadButton button:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 0 40px rgba(0, 255, 136, 0.6);
+    }
+    
+    [data-testid="stMetric"] {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 18px;
+        padding: 1.5rem;
+        box-shadow: var(--glass-shadow);
+        transition: all 0.3s;
+    }
+    
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-5px);
+        border-color: var(--neon-purple);
+        box-shadow: 0 12px 30px rgba(217, 70, 239, 0.3);
+    }
+    
+    [data-testid="stMetricValue"] {
+        font-size: 2.25rem !important;
+        font-weight: 800 !important;
+        color: var(--neon-cyan) !important;
+        text-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+    }
+    
+    [data-testid="stMetricLabel"] {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        color: #e2e8f0 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+    
+    .stProgress > div > div {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        height: 10px;
+        overflow: hidden;
+    }
+    
+    .stProgress > div > div > div {
+        background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-pink));
+        background-size: 200% 100%;
+        animation: gradientMove 2s linear infinite;
+        box-shadow: 0 0 20px var(--neon-cyan);
+    }
+    
+    @keyframes gradientMove {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+    }
+    
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.75rem;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        background: transparent;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #e2e8f0;
+        font-weight: 500;
+        padding: 0.875rem 1.5rem;
+        border-radius: 12px 12px 0 0;
+        transition: all 0.3s;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(0, 245, 255, 0.15);
+        color: var(--neon-cyan);
+        border-color: var(--neon-cyan);
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--neon-cyan) !important;
+        border-color: var(--neon-cyan);
+        border-bottom: 3px solid var(--neon-cyan);
+        font-weight: 600;
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.2);
+    }
+    
+    .stTabs [data-baseweb="tab-panel"] {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 0 12px 12px 12px;
+        padding: 2rem;
+        box-shadow: var(--glass-shadow);
+    }
+    
+    .stAlert {
+        backdrop-filter: blur(16px);
+        border-radius: 16px;
+        border: 2px solid;
+        padding: 1.25rem;
+        font-size: 0.9375rem;
+        font-weight: 500;
+    }
+    
+    .stSuccess {
+        background: rgba(0, 255, 136, 0.15);
+        color: #ffffff !important;
+        border-color: var(--neon-green);
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+    }
+    
+    .stWarning {
+        background: rgba(255, 187, 0, 0.15);
+        color: #ffffff !important;
+        border-color: #ffbb00;
+        box-shadow: 0 0 20px rgba(255, 187, 0, 0.2);
+    }
+    
+    .stError {
+        background: rgba(255, 0, 128, 0.15);
+        color: #ffffff !important;
+        border-color: var(--neon-pink);
+        box-shadow: 0 0 20px rgba(255, 0, 128, 0.2);
+    }
+    
+    .stInfo {
+        background: rgba(0, 245, 255, 0.15);
+        color: #ffffff !important;
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.2);
+    }
+    
+    .result-container {
+        background: rgba(0, 255, 136, 0.15);
+        backdrop-filter: blur(20px);
+        border: 2px solid var(--neon-green);
+        border-radius: 20px;
+        padding: 2.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 0 40px rgba(0, 255, 136, 0.3);
+        position: relative;
+        animation: pulse 3s ease-in-out infinite;
+    }
+    
+    .result-title {
+        color: #ffffff !important;
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+    }
+    
+    [data-testid="stSidebar"] {
+        background: var(--bg-secondary);
+        border-right: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .stTextInput input,
+    .stTextArea textarea {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff !important;
+        border-radius: 12px;
+        padding: 0.75rem;
+    }
+    
+    .stTextInput input:focus,
+    .stTextArea textarea:focus {
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+        outline: none;
+    }
+    
+    /* SEPARADORES MÁS VISIBLES */
+    hr {
+        border: none;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+        margin: 2rem 0;
+        box-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        box-shadow: 0 0 10px var(--neon-cyan);
+    }
+    
+    /* Mejorar contraste en elementos de texto */
+    .stMarkdown, .stText {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Lista y otros elementos */
+    li {
+        color: #e2e8f0 !important;
+    }
+    
+    ul, ol {
+        color: #e2e8f0 !important;
+    }
+
+
+    /* Navbar mejorado - Pantalla completa */
+    [data-testid="column"] button[kind="secondary"] {
+        background: rgba(255, 255, 255, 0.06) !important;
+        color: #e2e8f0 !important;
+        border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        padding: 0.7rem 1.2rem !important;
+        border-radius: 12px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+    
+    [data-testid="column"] button[kind="secondary"]:hover {
+        background: rgba(0, 245, 255, 0.12) !important;
+        border-color: var(--neon-cyan) !important;
+        color: var(--neon-cyan) !important;
+        box-shadow: 0 0 25px rgba(0, 245, 255, 0.4) !important;
+        transform: translateY(-2px) !important;
+    }
+    
+    [data-testid="column"] button[kind="primary"] {
+        background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-blue) 100%) !important;
+        color: #0a0e27 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        font-size: 0.85rem !important;
+        padding: 0.7rem 1.2rem !important;
+        border-radius: 12px !important;
+        box-shadow: 0 0 30px rgba(0, 245, 255, 0.6), 0 4px 15px rgba(0, 245, 255, 0.3) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transform: translateY(-2px) !important;
+    }
+    
+    /* Ocultar sidebar y ajustar espacios */
+    [data-testid="stSidebar"] {
+        display: none !important;
+    }
+    
+    section[data-testid="stSidebar"] {
+        display: none !important;
+    }
+    
+    /* Quitar márgenes del main */
+    .main {
+        padding: 0 !important;
+    }
+    
+    /* Contenedor principal sin márgenes */
+    .main .block-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* Ajustar padding del contenedor principal */
+    .main .block-container {
+        padding-top: 0 !important;
+    }
+            
+
 </style>
 """, unsafe_allow_html=True)
+
+
 
 
 # Funciones de extracción de texto de documentos
 def extraer_texto_pdf(file):
     try:
+        if PyPDF2 is None:
+            st.error("PyPDF2 no está instalado. Instálalo con: pip install PyPDF2")
+            return ""
+        
         pdf_reader = PyPDF2.PdfReader(file)
         texto = ""
         for page in pdf_reader.pages:
@@ -271,7 +857,7 @@ def leer_datos_ctrl(excel_file):
                     }
                     st.write(f"   {nombre}: Fecha incorporación={fecha_incorporacion_valor}, Baja={baja_valor}")
 
-        st.success(f" Datos del CTRL leídos: {len(datos_ctrl)} alumnos encontrados")
+        st.success(f"Datos del CTRL leídos: {len(datos_ctrl)} alumnos encontrados")
         return datos_ctrl
 
     except Exception as e:
@@ -345,7 +931,7 @@ def leer_datos_excel(excel_file, datos_evaluacion=None):
                 df_asist = pd.read_excel(excel_file, sheet_name="ASISTENCIA", header=fila_alumnos)
                 fila_modulos_data = df_asist_raw.iloc[fila_modulos]
 
-                st.write("**Mapeo de módulos encontrados:**")
+                st.write("Mapeo de módulos encontrados:")
                 mapeo_modulos = {}
                 for col_idx, valor in enumerate(fila_modulos_data):
                     if pd.notna(valor):
@@ -357,13 +943,13 @@ def leer_datos_excel(excel_file, datos_evaluacion=None):
                                 if col_idx < len(df_asist.columns):
                                     nombre_col = df_asist.columns[col_idx]
                                     mapeo_modulos[nombre_col] = codigo_modulo
-                                    st.write(f"   Columna '{nombre_col}' → {codigo_modulo}")
+                                    st.write(f"   Columna '{nombre_col}' - {codigo_modulo}")
 
                         if 'FCOO' in valor_str:
                             if col_idx < len(df_asist.columns):
                                 nombre_col = df_asist.columns[col_idx]
                                 mapeo_modulos[nombre_col] = 'FCOO03'
-                                st.write(f"   Columna '{nombre_col}' → FCOO03")
+                                st.write(f"   Columna '{nombre_col}' - FCOO03")
 
                 for _, row in df_asist.iterrows():
                     nombre_col = [col for col in df_asist.columns if 'ALUMN' in str(col).upper()]
@@ -417,7 +1003,7 @@ def leer_datos_excel(excel_file, datos_evaluacion=None):
                                             datos["alumnos"][nombre]["modulos_mf"][codigo_modulo] = str(valor)
                                             st.write(f"   {nombre}: {codigo_modulo} = {valor} (ASISTENCIA)")
 
-        st.success(f" Datos del Excel leídos: {len(datos['alumnos'])} alumnos encontrados")
+        st.success(f"Datos del Excel leídos: {len(datos['alumnos'])} alumnos encontrados")
         return datos
 
     except Exception as e:
@@ -524,13 +1110,13 @@ def extraer_evaluacion_profesores(texto):
                     if nota and calificacion:
                         valor_final = f"{nota} {calificacion}"
                         datos["alumnos"][nombre_actual][modulo] = valor_final
-                        st.write(f"   Evaluación: {nombre_actual} - {modulo} → {valor_final}")
+                        st.write(f"   Evaluación: {nombre_actual} - {modulo} - {valor_final}")
                     elif nota:
                         datos["alumnos"][nombre_actual][modulo] = nota
-                        st.write(f"   Evaluación: {nombre_actual} - {modulo} → {nota} (sin calificación)")
+                        st.write(f"   Evaluación: {nombre_actual} - {modulo} - {nota} (sin calificación)")
                     elif calificacion:
                         datos["alumnos"][nombre_actual][modulo] = calificacion
-                        st.write(f"   Evaluación: {nombre_actual} - {modulo} → {calificacion} (sin nota)")
+                        st.write(f"   Evaluación: {nombre_actual} - {modulo} - {calificacion} (sin nota)")
 
     return datos
 
@@ -542,7 +1128,7 @@ def extraer_evaluacion_excel(file, verbose=True):
 
     try:
         file.seek(0)
-        if verbose: st.write(" Leyendo Excel de Evaluación...")
+        if verbose: st.write("Leyendo Excel de Evaluación...")
 
         # Leer TODO el Excel sin encabezados
         df_raw = pd.read_excel(file, sheet_name=0, header=None)
@@ -555,7 +1141,7 @@ def extraer_evaluacion_excel(file, verbose=True):
             row_text = ' '.join([str(x) for x in row.values if pd.notna(x)])
             if 'MF0969' in row_text or 'MF0970' in row_text:
                 fila_modulos = idx
-                if verbose: st.write(f" Fila módulos: {fila_modulos}")
+                if verbose: st.write(f"Fila módulos: {fila_modulos}")
                 break
 
         if not fila_modulos:
@@ -568,7 +1154,7 @@ def extraer_evaluacion_excel(file, verbose=True):
                 valor = df_raw.iloc[fila_idx, col_idx]
                 if pd.notna(valor) and ',' in str(valor) and len(str(valor)) > 10:
                     col_nombres = col_idx
-                    if verbose: st.write(f" Columna nombres: {col_nombres}")
+                    if verbose: st.write(f"Columna nombres: {col_nombres}")
                     break
             if col_nombres is not None:
                 break
@@ -609,7 +1195,7 @@ def extraer_evaluacion_excel(file, verbose=True):
             if nota_col and calif_col:
                 info["nota_col"] = nota_col
                 info["calif_col"] = calif_col
-                if verbose: st.write(f" {modulo}: nota=col{nota_col}, calif=col{calif_col}")
+                if verbose: st.write(f"{modulo}: nota=col{nota_col}, calif=col{calif_col}")
 
         # 4. Buscar fila inicio datos
         fila_inicio = None
@@ -617,7 +1203,7 @@ def extraer_evaluacion_excel(file, verbose=True):
             valor = df_raw.iloc[fila_idx, col_nombres]
             if pd.notna(valor) and ',' in str(valor) and len(str(valor)) > 10:
                 fila_inicio = fila_idx
-                if verbose: st.write(f" Datos desde fila: {fila_inicio}")
+                if verbose: st.write(f"Datos desde fila: {fila_inicio}")
                 break
 
         if not fila_inicio:
@@ -656,7 +1242,7 @@ def extraer_evaluacion_excel(file, verbose=True):
                     else:
                         try:
                             n = float(nota)
-                            nota = str(int(n))  # int() trunca, no redondea (9.8 → 9, no 10)
+                            nota = str(int(n))  # int() trunca, no redondea (9.8 - 9, no 10)
                         except:
                             pass
 
@@ -688,7 +1274,7 @@ def extraer_evaluacion_excel(file, verbose=True):
                     datos["alumnos"][nombre][modulo] = valor
                     if verbose: st.write(f"   {nombre} - {modulo}: {valor}")
 
-        st.success(f" Procesados {len(datos['alumnos'])} alumnos")
+        st.success(f"Procesados {len(datos['alumnos'])} alumnos")
         return datos
 
     except Exception as e:
@@ -717,7 +1303,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
             if valor:
                 encabezados[str(valor).strip().lower()] = col
 
-        st.write("**Encabezados detectados en RESUMEN:**")
+        st.write("Encabezados detectados en RESUMEN:")
         st.write(list(encabezados.keys()))
 
         alumnos_excel = datos_excel.get("alumnos", {})
@@ -761,7 +1347,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
             if not dni:
                 dni = datos_alumno.get("dni", "")
                 if dni:
-                    st.write(f"  ℹ DNI del Excel principal: {dni}")
+                    st.write(f"   DNI del Excel principal: {dni}")
 
             if "dni" in encabezados and dni:
                 ws.cell(row=fila, column=encabezados["dni"], value=dni)
@@ -798,7 +1384,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                             if corporacion:
                                 ws.cell(row=fila, column=col, value=corporacion)
                                 celdas_escritas += 1
-                                st.write(f"   Corporación → {corporacion}")
+                                st.write(f"   Corporación - {corporacion}")
                             break
 
                     # Baja
@@ -808,7 +1394,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                             if baja:
                                 ws.cell(row=fila, column=col, value=baja)
                                 celdas_escritas += 1
-                                st.write(f"   Baja → {baja}")
+                                st.write(f"   Baja - {baja}")
                             break
 
                     # Motivo (sin paréntesis)
@@ -818,7 +1404,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                             if motivo:
                                 ws.cell(row=fila, column=col, value=motivo)
                                 celdas_escritas += 1
-                                st.write(f"   Motivo → {motivo}")
+                                st.write(f"   Motivo - {motivo}")
                             break
 
                     # Baja - Motivo (combinado) con DEBUG
@@ -870,7 +1456,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                             if baja_motivo_combinado:
                                 ws.cell(row=fila, column=col, value=baja_motivo_combinado)
                                 celdas_escritas += 1
-                                st.write(f"   Baja - Motivo → '{baja_motivo_combinado}'")
+                                st.write(f"   Baja - Motivo - '{baja_motivo_combinado}'")
                             break
 
                     # % Baja Ocupación
@@ -882,7 +1468,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                             if baja_ocupacion:
                                 ws.cell(row=fila, column=col, value=baja_ocupacion)
                                 celdas_escritas += 1
-                                st.write(f"   % Baja Ocupación → {baja_ocupacion}")
+                                st.write(f"   % Baja Ocupación - {baja_ocupacion}")
                             break
 
                     # FECHA DE INCORPORACIÓN - DEBUG COMPLETO
@@ -907,19 +1493,19 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                                     celda.value = fecha_string
                                     # Aplicar formato de TEXTO (no fecha)
                                     celda.number_format = '@'  # @ = formato texto
-                                    st.write(f"   Fecha Incorporación → '{fecha_string}' (TEXTO)")
+                                    st.write(f"   Fecha Incorporación - '{fecha_string}' (TEXTO)")
                                     st.write(f"   DEBUG - Formato aplicado: '@' (texto)")
                                 elif isinstance(fecha_incorporacion, datetime):
                                     # Convertir a string DD/MM/YYYY
                                     fecha_string = fecha_incorporacion.strftime('%d/%m/%Y')
                                     celda.value = fecha_string
                                     celda.number_format = '@'  # @ = formato texto
-                                    st.write(f"   Fecha Incorporación → '{fecha_string}' (TEXTO desde datetime)")
+                                    st.write(f"   Fecha Incorporación - '{fecha_string}' (TEXTO desde datetime)")
                                     st.write(f"   DEBUG - Formato aplicado: '@' (texto)")
                                 else:
                                     celda.value = str(fecha_incorporacion)
                                     celda.number_format = '@'
-                                    st.write(f"   Fecha Incorporación → '{fecha_incorporacion}' (STRING directo)")
+                                    st.write(f"   Fecha Incorporación - '{fecha_incorporacion}' (STRING directo)")
                                     st.write(f"   DEBUG - Formato aplicado: '@' (texto)")
 
                                 st.write(f"   DEBUG - Valor escrito en celda: {celda.value}")
@@ -942,7 +1528,7 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                     if porcentaje:
                         ws.cell(row=fila, column=col, value=porcentaje)
                         celdas_escritas += 1
-                        st.write(f"   % Asistencia → {porcentaje} (columna: '{enc_key}')")
+                        st.write(f"   % Asistencia - {porcentaje} (columna: '{enc_key}')")
                         columna_encontrada = True
                     break
 
@@ -952,13 +1538,13 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
 
 
             # ACREDITACION - DEJAR EN BLANCO para rellenar manualmente
-            st.write(f"  ℹ ACREDITACION se deja en blanco (para rellenar manualmente)")
+            st.write(f"   ACREDITACION se deja en blanco (para rellenar manualmente)")
 
             # LIQUIDACION TEORIA - DEJAR EN BLANCO para rellenar manualmente
-            st.write(f"  ℹ LIQUIDACION TEORIA se deja en blanco (para rellenar manualmente)")
+            st.write(f"   LIQUIDACION TEORIA se deja en blanco (para rellenar manualmente)")
 
             # LIQUIDACION EMPRESA - DEJAR EN BLANCO para rellenar manualmente
-            st.write(f"  ℹ LIQUIDACION EMPRESA se deja en blanco (para rellenar manualmente)")
+            st.write(f"   LIQUIDACION EMPRESA se deja en blanco (para rellenar manualmente)")
 
             # FCOO03
             fcoo03 = datos_alumno.get("fcoo03", "")
@@ -974,14 +1560,14 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
             if fcoo03_col and fcoo03:
                 ws.cell(row=fila, column=fcoo03_col, value=fcoo03)
                 celdas_escritas += 1
-                st.write(f"   FCOO03 → {fcoo03}")
+                st.write(f"   FCOO03 - {fcoo03}")
             elif not fcoo03_col:
                 st.write(f"   No se encontró columna FCOO03 en encabezados")
             elif not fcoo03:
                 st.write(f"   FCOO03 está vacío para {nombre}")
 
             # PRL - DEJAR EN BLANCO
-            st.write(f"  ℹ PRL se deja en blanco")
+            st.write(f"   PRL se deja en blanco")
 
             # Módulos MF
             modulos_mf = datos_alumno.get("modulos_mf", {})
@@ -1002,19 +1588,19 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
                            enc_key_upper in modulo_limpio:
                             ws.cell(row=fila, column=col, value=calificacion)
                             celdas_escritas += 1
-                            st.write(f"   {modulo} → {calificacion} (columna {col}, encabezado '{enc_key}')")
+                            st.write(f"   {modulo} - {calificacion} (columna {col}, encabezado '{enc_key}')")
                             encontrado = True
                             break
 
                     if not encontrado:
                         st.write(f"   No se encontró columna para módulo '{modulo_limpio}'")
             else:
-                st.write(f"  ℹ No hay módulos MF para {nombre}")
+                st.write(f"   No hay módulos MF para {nombre}")
 
             # F.E. - DEJAR EN BLANCO
-            st.write(f"  ℹ F.E. se deja en blanco")
+            st.write(f"   F.E. se deja en blanco")
 
-        st.success(f" Total: {celdas_escritas} celdas escritas en {len(alumnos_lista)} filas")
+        st.success(f"Total: {celdas_escritas} celdas escritas en {len(alumnos_lista)} filas")
 
         # Guardar
         output = io.BytesIO()
@@ -1029,59 +1615,58 @@ def llenar_excel_resumen(excel_file, datos_excel, datos_documentos, datos_ctrl=N
         st.code(traceback.format_exc())
         return None
 
-# Estilos CSS
-st.markdown("""
-<style>
-.header {
-    width: 100%;
-    background: linear-gradient(90deg, #00BCD4 0%, #009688 100%);
-    padding: 1rem 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0 0 15px 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-}
-.header img {
-    width: 100%;
-    max-width: 600px;
-    object-fit: contain;
-}
-.sidebar .sidebar-content {
-    background: #f9fafc;
-}
-.sidebar-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: #009688;
-    margin-bottom: 1rem;
-}
-.main-container {
-    background: white;
-    padding: 2rem;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-}
-.info-box {
-    background: #e0f7fa;
-    padding: 1rem;
-    border-radius: 10px;
-    border-left: 4px solid #00BCD4;
-    margin: 1rem 0;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Encabezado
+# Cargar logo
 try:
-    logo_b64 = base64.b64encode(open("logo.png", "rb").read()).decode()
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="Smartmind logo">'
+    # Intentar cargar desde el archivo
+    with open("logo.png", "rb") as f:
+        logo_b64 = base64.b64encode(f.read()).decode()
 except:
-    logo_html = '<h1 style="color:white;">Smartmind</h1>'
+    logo_b64 = None
 
-st.markdown(f'<div class="header">{logo_html}</div>', unsafe_allow_html=True)
+# Navbar principal con logo
+if logo_b64:
+    st.markdown(f'''
+    <div style="background: transparent; 
+                padding: 1.5rem 3rem; 
+                border-bottom: 1px solid rgba(74, 144, 226, 0.2);
+                position: sticky;
+                top: 0;
+                z-index: 1000;">
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="
+                    width: 70px; 
+                    height: 70px; 
+                    background: white; 
+                    border-radius: 50%; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center;
+                    padding: 8px;
+                    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+                    border: 2px solid rgba(74, 144, 226, 0.3);
+                    flex-shrink: 0;
+                ">
+                    <img src="data:image/png;base64,{logo_b64}" 
+                         style="width: 100%; 
+                                height: 100%; 
+                                object-fit: contain; 
+                                border-radius: 50%;">
+                </div>
+                <div>
+                    <h1 style="margin: 0; font-size: 1.6rem; color: #e8f1f8; font-weight: 800; letter-spacing: -0.02em;">
+                        SmartMind
+                    </h1>
+                    <p style="margin: 0; font-size: 0.85rem; color: #4a90e2; font-weight: 500;">
+                        Documentación Convocatorias
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
 
-# Secciones
+# Navegación horizontal
 secciones = {
     "Captación": "Carga los documentos de captación de alumnos.",
     "Formación Empresa Inicio": "Documentación de inicio de formación en empresa.",
@@ -1093,23 +1678,34 @@ secciones = {
 if "seccion_actual" not in st.session_state:
     st.session_state.seccion_actual = list(secciones.keys())[0]
 
-# Menú lateral
-st.sidebar.markdown('<p class="sidebar-title">Menú</p>', unsafe_allow_html=True)
-for nombre in secciones.keys():
-    if st.sidebar.button(nombre, key=nombre, use_container_width=True):
-        st.session_state.seccion_actual = nombre
+st.markdown('<div style="padding: 0 3rem; margin-top: 1.5rem;">', unsafe_allow_html=True)
+cols = st.columns(len(secciones))
 
-st.sidebar.markdown("---")
-st.sidebar.info("Usa el menú para navegar entre las secciones del sistema de automatización.")
+for idx, (nombre, descripcion) in enumerate(secciones.items()):
+    with cols[idx]:
+        if st.button(
+            nombre,
+            key=f"nav_{nombre}",
+            use_container_width=True,
+            type="primary" if st.session_state.seccion_actual == nombre else "secondary"
+        ):
+            st.session_state.seccion_actual = nombre
+            st.rerun()
 
-# Contenido principal
-st.markdown(f'<div class="main-container">', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Header profesional
+# Contenedor del contenido con padding
+st.markdown('<div style="padding: 2rem 3rem;">', unsafe_allow_html=True)
+
+# Título de la sección actual
 st.markdown(f"""
-<div class="header-container">
-    <h1 class="header-title">{st.session_state.seccion_actual}</h1>
-    <p class="header-subtitle">{secciones[st.session_state.seccion_actual]}</p>
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; color: white; font-weight: 700; margin: 0;">
+        {st.session_state.seccion_actual}
+    </h1>
+    <p style="color: #e2e8f0; font-size: 1rem; margin-top: 0.5rem;">
+        {secciones[st.session_state.seccion_actual]}
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1121,45 +1717,43 @@ if st.session_state.seccion_actual == "Formación Empresa Fin":
     col_excel1, col_excel2 = st.columns(2)
 
     with col_excel1:
-        st.markdown("**Excel Principal** _(RESUMEN, CALIFICACIONES, ASISTENCIA)_")
+        st.markdown("**Excel Principal** (RESUMEN, CALIFICACIONES, ASISTENCIA)")
         excel_justificacion = st.file_uploader(
             "Cargar Excel con las 3 pestañas",
-            type=["xlsx", "xls"],
             key="excel_justificacion"
         )
 
         if excel_justificacion:
-            st.success(" Excel principal cargado")
+            st.success("Excel principal cargado")
             try:
                 xls = pd.ExcelFile(excel_justificacion)
-                st.write(f" Pestañas: {', '.join(xls.sheet_names)}")
+                st.write(f"Pestañas: {', '.join(xls.sheet_names)}")
             except Exception as e:
-                st.warning(f" Error: {str(e)}")
+                st.warning(f"Error: {str(e)}")
 
     with col_excel2:
-        st.markdown("**Excel CTRL de Alumnos** _(Pestaña CTRL)_")
+        st.markdown("**Excel CTRL de Alumnos** (Pestaña CTRL)")
         excel_ctrl = st.file_uploader(
             "Cargar Excel CTRL de Alumnos",
-            type=["xlsx", "xls"],
             key="excel_ctrl",
             help="Este Excel debe contener la pestaña CTRL con información de corporación, baja y motivo"
         )
 
         if excel_ctrl:
-            st.success(" Excel CTRL cargado")
+            st.success("Excel CTRL cargado")
             try:
                 xls_ctrl = pd.ExcelFile(excel_ctrl)
-                st.write(f" Pestañas: {', '.join(xls_ctrl.sheet_names)}")
+                st.write(f"Pestañas: {', '.join(xls_ctrl.sheet_names)}")
                 if "CTRL" in xls_ctrl.sheet_names:
-                    st.info(" Pestaña CTRL encontrada")
+                    st.info("Pestaña CTRL encontrada")
                 else:
-                    st.warning(" No se encontró la pestaña CTRL")
+                    st.warning("No se encontró la pestaña CTRL")
             except Exception as e:
-                st.warning(f" Error: {str(e)}")
+                st.warning(f"Error: {str(e)}")
 
     st.markdown("---")
     st.markdown("### Fase 2: Documentos Escaneados (Requeridos)")
-    st.markdown('<div class="info-box"> Carga los 4 documentos. Estos son NECESARIOS para extraer datos que NO están en las pestañas del Excel.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="custom-card"><p>Carga los documentos necesarios. Puedes cargar múltiples hojas de firmas.</p></div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -1167,44 +1761,48 @@ if st.session_state.seccion_actual == "Formación Empresa Fin":
         st.markdown("**Plan de Evaluación**")
         plan_evaluacion = st.file_uploader(
             "Cargar Plan de Evaluación",
-            type=["pdf", "png", "jpg", "jpeg", "bmp", "tiff", "gif", "xlsx", "xls", "docx", "doc", "txt"],
             key="plan_evaluacion"
         )
 
         st.markdown("**Cronograma**")
         cronograma = st.file_uploader(
             "Cargar Cronograma",
-            type=["pdf", "png", "jpg", "jpeg", "bmp", "tiff", "gif", "xlsx", "xls", "docx", "doc", "txt"],
             key="cronograma"
         )
 
     with col2:
-        st.markdown("**Certificado de Asistencia (Hoja de Firmas)**")
-        certificado = st.file_uploader(
-            "Cargar Hoja de Firmas",
-            type=["pdf", "png", "jpg", "jpeg", "bmp", "tiff", "gif", "xlsx", "xls", "docx", "doc", "txt"],
-            key="certificado"
+        st.markdown("**Certificados de Asistencia (Hojas de Firmas)**")
+        certificados = st.file_uploader(
+            "Cargar una o más Hojas de Firmas",
+            key="certificados",
+            accept_multiple_files=True,
+            help="Puedes seleccionar múltiples archivos PDF o imágenes"
         )
+        
+        if certificados:
+            st.success(f"{len(certificados)} archivo(s) de hojas de firmas cargado(s)")
+            for cert in certificados:
+                st.write(f"- {cert.name}")
 
         st.markdown("**Evaluación de Profesores**")
         evacuacion = st.file_uploader(
             "Cargar Evaluación",
-            type=["pdf", "png", "jpg", "jpeg", "bmp", "tiff", "gif", "xlsx", "xls", "docx", "doc", "txt"],
             key="evacuacion"
         )
 
     st.markdown("---")
     st.markdown("### Fase 3: Procesamiento Automático")
 
-    documentos_cargados = [plan_evaluacion, cronograma, certificado, evacuacion]
-    archivos_totales = sum(1 for doc in documentos_cargados if doc is not None)
+    # Actualizar contador de documentos
+    documentos_cargados = [plan_evaluacion, cronograma, evacuacion] + ([certificados] if certificados else [])
+    archivos_totales = sum(1 for doc in [plan_evaluacion, cronograma, evacuacion] if doc is not None) + (1 if certificados else 0)
 
     if archivos_totales > 0:
-        st.markdown(f'<div class="custom-card"><p><strong>{archivos_totales} de 4</strong> documentos cargados correctamente</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="custom-card"><p><strong>{archivos_totales} de 4</strong> tipos de documentos cargados correctamente</p></div>', unsafe_allow_html=True)
 
     excel_ctrl_cargado = excel_ctrl is not None
 
-    if excel_justificacion and all(documentos_cargados):
+    if excel_justificacion and plan_evaluacion and cronograma and certificados and evacuacion:
 
         if not excel_ctrl_cargado:
             st.warning("AVISO: Excel CTRL no cargado. Los campos de Corporación, Baja y Motivo quedarán vacíos.")
@@ -1228,27 +1826,43 @@ if st.session_state.seccion_actual == "Formación Empresa Fin":
             datos_evaluacion = None
 
             # Plan de Evaluación
-            status_text.text(" Procesando Plan de Evaluación...")
+            status_text.text("Procesando Plan de Evaluación...")
             progress_bar.progress(20)
             if plan_evaluacion:
                 texto_plan = procesar_documento(plan_evaluacion)
 
             # Cronograma
-            status_text.text(" Procesando Cronograma...")
+            status_text.text("Procesando Cronograma...")
             progress_bar.progress(30)
             if cronograma:
                 texto_cronograma = procesar_documento(cronograma)
 
-            # Hoja de Firmas
-            status_text.text(" Procesando Hoja de Firmas...")
+            # Hojas de Firmas (múltiples)
+            status_text.text("Procesando Hojas de Firmas...")
             progress_bar.progress(40)
-            if certificado:
-                texto_certificado = procesar_documento(certificado)
-                if texto_certificado:
-                    datos_documentos["certificado_asistencia"] = extraer_datos_certificado_asistencia(texto_certificado)
+            if certificados:
+                # Procesar cada hoja de firmas y combinar los datos
+                todos_alumnos = []
+                for idx, certificado in enumerate(certificados):
+                    st.write(f"Procesando hoja de firmas {idx + 1}/{len(certificados)}: {certificado.name}")
+                    texto_certificado = procesar_documento(certificado)
+                    if texto_certificado:
+                        datos_cert = extraer_datos_certificado_asistencia(texto_certificado)
+                        if datos_cert.get("alumnos"):
+                            todos_alumnos.extend(datos_cert["alumnos"])
+                            st.write(f"  - Encontrados {len(datos_cert['alumnos'])} alumnos en {certificado.name}")
+                
+                # Combinar todos los alumnos en datos_documentos
+                if todos_alumnos:
+                    datos_documentos["certificado_asistencia"] = {
+                        "alumnos": todos_alumnos,
+                        "fecha_inicio": "",
+                        "curso": ""
+                    }
+                    st.success(f"Total de alumnos encontrados en todas las hojas de firmas: {len(todos_alumnos)}")
 
             # Evaluación de Profesores
-            status_text.text("‍ Procesando Evaluación de Profesores...")
+            status_text.text("Procesando Evaluación de Profesores...")
             progress_bar.progress(50)
             if evacuacion:
                 if evacuacion.type in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
@@ -1268,7 +1882,7 @@ if st.session_state.seccion_actual == "Formación Empresa Fin":
                         datos_evaluacion = extraer_evaluacion_profesores(texto_evacuacion)
 
             # Leer Excel
-            status_text.text(" Leyendo datos del Excel principal...")
+            status_text.text("Leyendo datos del Excel principal...")
             progress_bar.progress(70)
             datos_excel = leer_datos_excel(excel_justificacion, datos_evaluacion)
 
@@ -1317,7 +1931,7 @@ if st.session_state.seccion_actual == "Formación Empresa Fin":
                     docs_procesados = sum([
                         1 if plan_evaluacion else 0,
                         1 if cronograma else 0,
-                        1 if certificado else 0,
+                        1 if certificados else 0,
                         1 if evacuacion else 0
                     ])
                     st.metric("Documentos", f"{docs_procesados}/4")
@@ -1326,7 +1940,6 @@ if st.session_state.seccion_actual == "Formación Empresa Fin":
 
                 # Botones de acción
                 col_btn1, col_btn2 = st.columns([2, 1])
-
                 with col_btn1:
                     st.download_button(
                         label="Descargar Excel Completado",
@@ -1363,9 +1976,20 @@ if st.session_state.seccion_actual == "Formación Empresa Fin":
 
     elif excel_justificacion and archivos_totales > 0:
         st.warning("AVISO: Por favor, carga TODOS los documentos necesarios para continuar")
-        st.info(f"Documentos faltantes: {4 - archivos_totales}")
+        tipos_faltantes = []
+        if not plan_evaluacion:
+            tipos_faltantes.append("Plan de Evaluación")
+        if not cronograma:
+            tipos_faltantes.append("Cronograma")
+        if not certificados:
+            tipos_faltantes.append("Hojas de Firmas")
+        if not evacuacion:
+            tipos_faltantes.append("Evaluación de Profesores")
+        
+        st.info(f"Documentos faltantes: {', '.join(tipos_faltantes)}")
 
 else:
     st.info("Esta sección está en desarrollo. Por el momento, solo 'Formación Empresa Fin' tiene funcionalidad de procesamiento automático.")
+
 
 st.markdown("</div>", unsafe_allow_html=True)
